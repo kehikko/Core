@@ -7,7 +7,7 @@ use kernel;
  * @{
  */
 
-class Session extends AbstractModule
+class Session extends Module
 {
 	private $user = null;
 

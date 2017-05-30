@@ -1,10 +1,13 @@
 <?php
 
 namespace Core;
-use kernel;
-use Twig_ExtensionInterface
-use Twig_Environment
 use Exception;
+use kernel;
+use ReflectionMethod;
+use Twig_Environment;
+use Twig_ExtensionInterface;
+use Twig_Loader_Filesystem;
+use Twig_Function;
 
 /*! \addtogroup Core
  * @{
@@ -14,7 +17,7 @@ use Exception;
 /**
  * Controller class.
  */
-class Controller extends Module implements Twig_ExtensionInterface
+class Controller extends Module
 {
 	protected $action  = null;
 	protected $name    = null;
@@ -186,7 +189,7 @@ class Controller extends Module implements Twig_ExtensionInterface
 	{
 		$method = new ReflectionMethod($this, 'inputRaw');
 		$args   = func_get_args();
-		$value = $method->invokeArgs($this, $args);
+		$value  = $method->invokeArgs($this, $args);
 		if ($value === null)
 		{
 			return null;
@@ -410,7 +413,11 @@ class Controller extends Module implements Twig_ExtensionInterface
 
 		$twig_loader = new Twig_Loader_Filesystem($templates);
 		$config      = $this->kernel->getConfigValue('twig');
-		if ($config['cache'] !== false)
+		if (!$config)
+		{
+			$config = array('cache' => false);
+		}
+		if (isset($config['cache']) && $config['cache'] !== false)
 		{
 			/* expand twig cache path */
 			$config['cache'] = $this->kernel->expand($config['cache']);
@@ -418,32 +425,32 @@ class Controller extends Module implements Twig_ExtensionInterface
 		$twig = new Twig_Environment($twig_loader, $config);
 
 		/* add all custom functions to twig here */
-		$twig->addExtension($this);
-		$twig->addFunction('route', new Twig_Function_Method($this, 'route'));
-		$twig->addFunction('tr', new Twig_Function_Method($this, 'tr'));
-		$twig->addFunction(new Twig_SimpleFunction('trJs', array($this, 'trJs'), array('is_safe' => array('all'))));
+		//$twig->addExtension($this);
+		$twig->addFunction(new Twig_Function('route', array($this, 'route')));
+		$twig->addFunction(new Twig_Function('tr', array($this, 'tr')));
+		// $twig->addFunction(new Twig_SimpleFunction('trJs', array($this, 'trJs'), array('is_safe' => array('all'))));
 
-		$twig->addFunction('path', new Twig_Function_Method($this, 'linkPath'));
+		$twig->addFunction(new Twig_Function('path', array($this, 'linkPath')));
 
 		/* assets */
-		$twig->addFunction('asset', new Twig_Function_Method($this, 'linkAsset'));
-		$twig->addFunction('image', new Twig_Function_Method($this, 'linkImage'));
-		$twig->addFunction('css', new Twig_Function_Method($this, 'linkCss'));
-		$twig->addFunction('js', new Twig_Function_Method($this, 'linkJavascript'));
-		$twig->addFunction('javascript', new Twig_Function_Method($this, 'linkJavascript'));
+		$twig->addFunction(new Twig_Function('asset', array($this, 'linkAsset')));
+		$twig->addFunction(new Twig_Function('image', array($this, 'linkImage')));
+		$twig->addFunction(new Twig_Function('css', array($this, 'linkCss')));
+		$twig->addFunction(new Twig_Function('js', array($this, 'linkJavascript')));
+		$twig->addFunction(new Twig_Function('javascript', array($this, 'linkJavascript')));
 
-		$twig->addFunction('render', new Twig_Function_Method($this, 'renderRoute'));
-		$twig->addFunction('username', new Twig_Function_Method($this, 'username'));
-		$twig->addFunction('name', new Twig_Function_Method($this, 'twigName'));
-		$twig->addFunction('authorize', new Twig_Function_Method($this, 'authorize'));
+		$twig->addFunction(new Twig_Function('render', array($this, 'renderRoute')));
+		$twig->addFunction(new Twig_Function('username', array($this, 'username')));
+		$twig->addFunction(new Twig_Function('name', array($this, 'twigName')));
+		$twig->addFunction(new Twig_Function('authorize', array($this, 'authorize')));
 
-		$twig->addFunction('lang', new Twig_Function_Method($this, 'twigLang'));
+		$twig->addFunction(new Twig_Function('lang', array($this, 'lang')));
 
-		$twig->addFunction('msg', new Twig_Function_Method($this, 'twigMsg'));
+		$twig->addFunction(new Twig_Function('msg', array($this->kernel, 'msgGet')));
 
-		$twig->addFunction('config', new Twig_Function_Method($this, 'twigConfig'));
+		$twig->addFunction(new Twig_Function('config', array($this->kernel, 'getConfigValue')));
 
-		$twig->addFunction('bytes_to_human', new Twig_Function_Method($this, 'twigBytesToHuman'));
+		$twig->addFunction(new Twig_Function('bytes_to_human', array($this, 'twigBytesToHuman')));
 
 		return $twig;
 	}
@@ -721,107 +728,14 @@ class Controller extends Module implements Twig_ExtensionInterface
 		return $this->session->authorize($access, $user);
 	}
 
-	public function twigLang()
+	public function lang()
 	{
 		return $this->kernel->lang;
-	}
-
-	public function twigConfig()
-	{
-		$argv       = func_get_args();
-		$reflection = new ReflectionMethod('kernel', 'getConfigValue');
-		return $reflection->invokeArgs($this->kernel, $argv);
-	}
-
-	public function twigMsg($tag)
-	{
-		return $this->kernel->msgGet($tag);
 	}
 
 	public function twigBytesToHuman($bytes, $decimals = 2, $divider = 1024)
 	{
 		return Compose::bytesToHuman($bytes, $decimals, $divider);
-	}
-
-	/**
-	 * Initializes the runtime environment.
-	 *
-	 * This is where you can load some file that contains filter functions for instance.
-	 *
-	 * @param Twig_Environment $environment The current Twig_Environment instance
-	 */
-	public function initRuntime(Twig_Environment $environment)
-	{
-	}
-
-	/**
-	 * Returns the token parser instances to add to the existing list.
-	 *
-	 * @return array An array of Twig_TokenParserInterface or Twig_TokenParserBrokerInterface instances
-	 */
-	public function getTokenParsers()
-	{
-		return array();
-	}
-
-	/**
-	 * Returns the node visitor instances to add to the existing list.
-	 *
-	 * @return array An array of Twig_NodeVisitorInterface instances
-	 */
-	public function getNodeVisitors()
-	{
-		return array();
-	}
-
-	/**
-	 * Returns a list of filters to add to the existing list.
-	 *
-	 * @return array An array of filters
-	 */
-	public function getFilters()
-	{
-		return array();
-	}
-
-	/**
-	 * Returns a list of tests to add to the existing list.
-	 *
-	 * @return array An array of tests
-	 */
-	public function getTests()
-	{
-		return array();
-	}
-
-	/**
-	 * Returns a list of functions to add to the existing list.
-	 *
-	 * @return array An array of functions
-	 */
-	public function getFunctions()
-	{
-		return array();
-	}
-
-	/**
-	 * Returns a list of operators to add to the existing list.
-	 *
-	 * @return array An array of operators
-	 */
-	public function getOperators()
-	{
-		return array();
-	}
-
-	/**
-	 * Returns a list of global variables to add to the existing list.
-	 *
-	 * @return array An array of global variables
-	 */
-	public function getGlobals()
-	{
-		return array();
 	}
 }
 
