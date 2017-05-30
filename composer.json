@@ -14,9 +14,10 @@
 	},
 	"autoload":
 	{
-		"psr-0":
+		"files": [ "Exceptions.php" ],
+		"psr-4":
 		{
-			"Controller": ""
+			"Core\\": ""
 		}
 	}
 }
