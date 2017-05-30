@@ -5,9 +5,8 @@ use Exception;
 use kernel;
 use ReflectionMethod;
 use Twig_Environment;
-use Twig_ExtensionInterface;
-use Twig_Loader_Filesystem;
 use Twig_Function;
+use Twig_Loader_Filesystem;
 
 /*! \addtogroup Core
  * @{
@@ -404,7 +403,7 @@ class Controller extends Module
 		{
 			$templates[] = $common;
 		}
-		$templates[] = '/';
+		$templates[] = $this->kernel->expand('{path:routes}');
 
 		if (is_array($extra_paths))
 		{
@@ -428,7 +427,7 @@ class Controller extends Module
 		//$twig->addExtension($this);
 		$twig->addFunction(new Twig_Function('route', array($this, 'route')));
 		$twig->addFunction(new Twig_Function('tr', array($this, 'tr')));
-		// $twig->addFunction(new Twig_SimpleFunction('trJs', array($this, 'trJs'), array('is_safe' => array('all'))));
+		$twig->addFunction(new Twig_Function('trJs', array($this, 'trJs'), array('is_safe' => array('all'))));
 
 		$twig->addFunction(new Twig_Function('path', array($this, 'linkPath')));
 
@@ -445,10 +444,9 @@ class Controller extends Module
 		$twig->addFunction(new Twig_Function('authorize', array($this, 'authorize')));
 
 		$twig->addFunction(new Twig_Function('lang', array($this, 'lang')));
-
 		$twig->addFunction(new Twig_Function('msg', array($this->kernel, 'msgGet')));
-
 		$twig->addFunction(new Twig_Function('config', array($this->kernel, 'getConfigValue')));
+		$twig->addFunction(new Twig_Function('expand', array($this->kernel, 'expand')));
 
 		$twig->addFunction(new Twig_Function('bytes_to_human', array($this, 'twigBytesToHuman')));
 
@@ -710,15 +708,15 @@ class Controller extends Module
 
 	public function twigName()
 	{
-		$user = $this->session->getUser(); ('name');
+		$user = $this->session->getUser();
 		$name = null;
 		if ($user)
 		{
 			$name = $user->get('name');
 		}
-		if (strlen($name) < 1)
+		if (empty($name))
 		{
-			return $this->session->get('username');
+			$name = $this->session->get('username');
 		}
 		return $name;
 	}
