@@ -2,6 +2,7 @@
 
 namespace Core;
 use kernel;
+use Exception403;
 
 /*! \addtogroup Core
  * @{
