@@ -41,8 +41,15 @@ abstract class Module
 		$argv = func_get_args();
 		array_unshift($argv, get_class($this));
 		$reflection = new ReflectionMethod('kernel', 'getModuleValue');
+		/* return value from current module configuration */
+		return $reflection->invokeArgs($this->kernel, $argv);
+	}
 
-		/* return asked value for current module */
+	public function getConfigValue()
+	{
+		$argv = func_get_args();
+		$reflection = new ReflectionMethod('kernel', 'getConfigValue');
+		/* return value from configuration */
 		return $reflection->invokeArgs($this->kernel, $argv);
 	}
 

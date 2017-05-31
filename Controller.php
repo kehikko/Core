@@ -411,7 +411,7 @@ class Controller extends Module
 		}
 
 		$twig_loader = new Twig_Loader_Filesystem($templates);
-		$config      = $this->kernel->getConfigValue('twig');
+		$config      = $this->getConfigValue('twig');
 		if (!$config)
 		{
 			$config = array('cache' => false);
@@ -575,7 +575,7 @@ class Controller extends Module
 		/* if debug is false and packed version is set, return it */
 		if ($this->kernel->debug() == false)
 		{
-			$value = $this->kernel->getConfigValue('setup', 'cache', 'css');
+			$value = $this->getConfigValue('setup', 'cache', 'css');
 			if ($value)
 			{
 				/* remove static files */
@@ -622,7 +622,7 @@ class Controller extends Module
 		/* if debug is false and packed version is set, return it */
 		if ($this->kernel->debug() == false)
 		{
-			$value = $this->kernel->getConfigValue('setup', 'cache', 'javascript');
+			$value = $this->getConfigValue('setup', 'cache', 'javascript');
 			if ($value)
 			{
 				/* remove static files */
