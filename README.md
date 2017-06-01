@@ -1,2 +1,2 @@
-# module-Core
-Main core functionality
+# Core
+Kehikko framework core functionality.
