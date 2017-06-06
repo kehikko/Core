@@ -679,17 +679,17 @@ class Controller extends Module
 					$type  = 'twig';
 					$value = $value['twig'];
 				}
-
+				/* get path and url */
 				$path = $this->pathAsset($value, $route, $postdir, $webdir);
 				$url  = $this->linkAsset($value, $route, $postdir);
-
+				/* check route */
 				$realroute = $route;
 				$list      = explode(':', $value, 2);
 				if (count($list) == 2)
 				{
 					$realroute = $list[0];
 				}
-
+				/* add */
 				$values[] = array(
 					'type'  => $type,
 					'path'  => $path,
