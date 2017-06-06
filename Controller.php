@@ -563,37 +563,9 @@ class Controller extends Module
 		 * return list of css files defined in configuration
 		 */
 
-		/* if none defined */
-		if (!isset($this->config['css']))
-		{
-			return array();
-		}
-
 		$values = array();
-		$this->expandConfigAssets($this->config, 'css', 'css', $values, false);
-
-		/* if debug is false and packed version is set, return it */
-		if ($this->kernel->debug() == false)
-		{
-			$value = $this->getConfigValue('setup', 'cache', 'css');
-			if ($value)
-			{
-				/* remove static files */
-				foreach ($values as $k => $v)
-				{
-					if ($v['type'] == 'static')
-					{
-						unset($values[$k]);
-					}
-				}
-				/* append compressed version of static files */
-				array_unshift($values, array(
-					'type' => 'static',
-					'path' => null,
-					'url'  => $this->kernel->url($value),
-				));
-			}
-		}
+		$this->expandConfigAssets($this->config, 'assets', '', $values, false, '.css');
+		$this->expandConfigAssets($this->config, 'css', 'css', $values, false, false);
 
 		return $values;
 	}
@@ -610,47 +582,46 @@ class Controller extends Module
 		 * return list of javascript files defined in configuration
 		 */
 
-		/* if none defined */
-		if (!isset($this->config['javascript']))
-		{
-			return array();
-		}
-
 		$values = array();
-		$this->expandConfigAssets($this->config, 'javascript', 'js', $values, false);
-
-		/* if debug is false and packed version is set, return it */
-		if ($this->kernel->debug() == false)
-		{
-			$value = $this->getConfigValue('setup', 'cache', 'javascript');
-			if ($value)
-			{
-				/* remove static files */
-				foreach ($values as $k => $v)
-				{
-					if ($v['type'] == 'static')
-					{
-						unset($values[$k]);
-					}
-				}
-				/* append compressed version of static files */
-				array_unshift($values, array(
-					'type' => 'static',
-					'path' => null,
-					'url'  => $this->kernel->url($value),
-				));
-			}
-		}
+		$this->expandConfigAssets($this->config, 'assets', '', $values, false, '.js');
+		$this->expandConfigAssets($this->config, 'javascript', 'js', $values, false, false);
 
 		return $values;
 	}
 
-	public function expandConfigAssets($config, $key, $postdir, &$values, $route)
+	public function expandConfigAssets($config, $key, $postdir, &$values, $route, $postfix)
 	{
+		if (!isset($config[$key]))
+		{
+			return false;
+		}
+
+		// if ($key == 'assets' && $postfix == '.js')
+		// {
+		// 	die('moi ' . $postfix);
+		// }
+
 		foreach ($config[$key] as $value)
 		{
-			if (is_string($value) && (strpos($value, 'http://') === 0 || strpos($value, 'https://') === 0))
+			if (is_string($value) && substr($value, -1) == '*')
 			{
+				/* this is a template style asset */
+				/* wildcard append from route config */
+				list($subroute) = explode(':', $value, 2);
+				$routepath      = $this->kernel->expand('{path:routes}/' . $subroute);
+				$subconfig      = $this->kernel->loadRouteConfig($routepath);
+				if (isset($subconfig[$key]))
+				{
+					$this->expandConfigAssets($subconfig, $key, $postdir, $values, $subroute, $postfix);
+				}
+			}
+			else if (is_string($value) && $postfix && substr($value, -strlen($postfix)) != $postfix)
+			{
+				continue;
+			}
+			else if (is_string($value) && (strpos($value, 'http://') === 0 || strpos($value, 'https://') === 0))
+			{
+				/* external urls */
 				$values[] = array(
 					'type'     => 'url',
 					'path'     => null,
@@ -659,20 +630,9 @@ class Controller extends Module
 					'relative' => null,
 				);
 			}
-			else if (!isset($value['twig']) && substr($value, -1) == '*')
-			{
-				/* wildcard append from route config */
-				list($subroute) = explode(':', $value, 2);
-				$routepath      = $this->kernel->expand('{path:routes}/' . $subroute);
-				$subconfig      = $this->kernel->loadRouteConfig($routepath);
-				if (isset($subconfig[$key]))
-				{
-					$this->expandConfigAssets($subconfig, $key, $postdir, $values, $subroute);
-				}
-			}
 			else
 			{
-				/* single one */
+				/* just simple static one */
 				$type = 'static';
 				if (isset($value['twig']))
 				{
@@ -699,6 +659,8 @@ class Controller extends Module
 				);
 			}
 		}
+
+		return true;
 	}
 
 	public function username()
