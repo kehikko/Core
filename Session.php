@@ -93,7 +93,7 @@ class Session extends Module
 
 	public function fakeUser($username)
 	{
-		if ($this->authorize('role:root'))
+		if ($this->authorize('role:fake'))
 		{
 			$user = null;
 			foreach ($this->getModuleValue('authenticators') as $class)
