@@ -89,7 +89,7 @@ abstract class Module
 		array_shift($args);
 		array_unshift($args, $signal);
 		
-		$this->kernel->log(LOG_DEBUG, 'Emit signal, name: ' . $signal . ', number of arguments: ' . count($args));
+		// $this->kernel->log(LOG_DEBUG, 'Emit signal, name: ' . $signal . ', number of arguments: ' . count($args));
 
 		$calls = $this->kernel->getConfigValue('setup', 'signals', $signal);
 		if (is_array($calls))
