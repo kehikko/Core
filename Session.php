@@ -1,8 +1,8 @@
 <?php
 
 namespace Core;
-use kernel;
 use Exception403;
+use kernel;
 
 /*! \addtogroup Core
  * @{
@@ -211,7 +211,12 @@ class Session extends Module
 
 	private function authorizeSingle($access, $user = null)
 	{
-		list($type, $name) = explode(':', $access);
+		$parts = explode(':', $access);
+		if (count($parts) != 2)
+		{
+			return false;
+		}
+		list($type, $name) = $parts;
 
 		/* user role none is also acceptable one, and it always returns accepted */
 		if ($type == 'role' && $name == 'none')
