@@ -16,7 +16,7 @@ use Twig_Loader_Filesystem;
 /**
  * Controller class.
  */
-class Controller extends Module
+class Controller extends \Core\Module
 {
 	protected $action  = null;
 	protected $name    = null;

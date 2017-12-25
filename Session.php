@@ -8,14 +8,29 @@ use kernel;
  * @{
  */
 
-class Session extends Module
+class Session extends \Core\Module
 {
 	private $user = null;
 
 	public function __construct()
 	{
 		parent::__construct();
+
 		session_start();
+
+		/* session expiration */
+		$timeout = $this->getModuleValue('timeout');
+		if ($timeout > 0)
+		{
+			if (isset($_SESSION['LAST_ACTIVITY']) &&
+				($_SESSION['LAST_ACTIVITY'] + $timeout) < time())
+			{
+				/* restart session */
+				$this->destroy();
+				session_start();
+			}
+			$_SESSION['LAST_ACTIVITY'] = time();
+		}
 
 		/* do authentication using basic auth
 		 * if basic auth variables are set and
@@ -33,6 +48,7 @@ class Session extends Module
 	public function destroy()
 	{
 		$username = $this->get('username');
+		session_unset();
 		session_destroy();
 		$this->user = null;
 		$this->kernel->log(LOG_DEBUG, 'Logout, username: ' . $username, 'session');
