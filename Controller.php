@@ -319,16 +319,15 @@ class Controller extends \Core\Module
 		return false;
 	}
 
-	public function renderAction()
+	public function renderMethodResolve(&$args)
 	{
+		$args             = array();
 		$actionMethodName = $this->action . CONTROLLER_ACTION_EXTENSION;
 		if (!method_exists($this, $actionMethodName))
 		{
 			throw new Exception('invalid action ' . $this->action);
 		}
-
 		$method = new ReflectionMethod($this, $actionMethodName);
-		$args   = array();
 		foreach ($method->getParameters() as $parameter)
 		{
 			$name = $parameter->getName();
@@ -344,7 +343,12 @@ class Controller extends \Core\Module
 				$args[] = $this->slugs[$name]['value'];
 			}
 		}
+		return $method;
+	}
 
+	public function renderAction()
+	{
+		$method = $this->renderMethodResolve($args);
 		return $method->invokeArgs($this, $args);
 	}
 

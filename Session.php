@@ -10,7 +10,25 @@ use kernel;
 
 class Session extends \Core\Module
 {
+	private static $instance;
+
 	private $user = null;
+
+	/**
+	 * Get Session instance.
+	 *
+	 * @return Session instance
+	 */
+	public static function getInstance()
+	{
+		if (null === static::$instance)
+		{
+			static::$instance = new static();
+		}
+
+		return static::$instance;
+	}
+
 
 	public function __construct()
 	{
