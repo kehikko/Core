@@ -9,14 +9,13 @@
  */
 class RedirectException extends Exception
 {
-	public function __construct($url, $code = 302, $get = array())
-	{
-		if (count($get) > 0)
-		{
-			$url .= '?' . http_build_query($get);
-		}
-		parent::__construct($url, $code);
-	}
+    public function __construct($url, $code = 302, $get = array())
+    {
+        if (count($get) > 0) {
+            $url .= '?' . http_build_query($get);
+        }
+        parent::__construct($url, $code);
+    }
 }
 
 /**
@@ -24,10 +23,10 @@ class RedirectException extends Exception
  */
 class Exception304 extends Exception
 {
-	public function __construct($message = 'Not Modified')
-	{
-		parent::__construct($message, 304);
-	}
+    public function __construct($message = 'Not Modified')
+    {
+        parent::__construct($message, 304);
+    }
 }
 
 /**
@@ -35,10 +34,10 @@ class Exception304 extends Exception
  */
 class Exception400 extends Exception
 {
-	public function __construct($message = 'Bad Request')
-	{
-		parent::__construct($message, 400);
-	}
+    public function __construct($message = 'Bad Request')
+    {
+        parent::__construct($message, 400);
+    }
 }
 
 /**
@@ -46,10 +45,10 @@ class Exception400 extends Exception
  */
 class Exception401 extends Exception
 {
-	public function __construct($message = 'Unauthorized')
-	{
-		parent::__construct($message, 401);
-	}
+    public function __construct($message = 'Unauthorized')
+    {
+        parent::__construct($message, 401);
+    }
 }
 
 /**
@@ -57,10 +56,10 @@ class Exception401 extends Exception
  */
 class Exception403 extends Exception
 {
-	public function __construct($message = 'Forbidden')
-	{
-		parent::__construct($message, 403);
-	}
+    public function __construct($message = 'Forbidden')
+    {
+        parent::__construct($message, 403);
+    }
 }
 
 /**
@@ -68,10 +67,10 @@ class Exception403 extends Exception
  */
 class Exception404 extends Exception
 {
-	public function __construct($message = 'Not Found')
-	{
-		parent::__construct($message, 404);
-	}
+    public function __construct($message = 'Not Found')
+    {
+        parent::__construct($message, 404);
+    }
 }
 
 /**
@@ -79,10 +78,10 @@ class Exception404 extends Exception
  */
 class Exception405 extends Exception
 {
-	public function __construct($message = 'Method Not Allowed')
-	{
-		parent::__construct($message, 405);
-	}
+    public function __construct($message = 'Method Not Allowed')
+    {
+        parent::__construct($message, 405);
+    }
 }
 
 /**
@@ -90,10 +89,10 @@ class Exception405 extends Exception
  */
 class Exception409 extends Exception
 {
-	public function __construct($message = 'Conflict')
-	{
-		parent::__construct($message, 409);
-	}
+    public function __construct($message = 'Conflict')
+    {
+        parent::__construct($message, 409);
+    }
 }
 
 /**
@@ -101,10 +100,10 @@ class Exception409 extends Exception
  */
 class Exception410 extends Exception
 {
-	public function __construct($message = 'Gone')
-	{
-		parent::__construct($message, 410);
-	}
+    public function __construct($message = 'Gone')
+    {
+        parent::__construct($message, 410);
+    }
 }
 
 /**
@@ -112,22 +111,21 @@ class Exception410 extends Exception
  */
 class Exception500 extends Exception
 {
-	public function __construct($message = 'Internal Server Error')
-	{
-		parent::__construct($message, 500);
-	}
+    public function __construct($message = 'Internal Server Error')
+    {
+        parent::__construct($message, 500);
+    }
 }
-
 
 /**
  * Return http code 501 (Not Implemented).
  */
 class Exception501 extends Exception
 {
-	public function __construct($message = 'Not Implemented')
-	{
-		parent::__construct($message, 501);
-	}
+    public function __construct($message = 'Not Implemented')
+    {
+        parent::__construct($message, 501);
+    }
 }
 
 /*! @} endgroup Exceptions */

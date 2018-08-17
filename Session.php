@@ -1,6 +1,7 @@
 <?php
 
 namespace Core;
+
 use Exception403;
 use kernel;
 
@@ -10,322 +11,277 @@ use kernel;
 
 class Session extends \Core\Module
 {
-	private static $instance;
+    private static $instance;
 
-	private $user = null;
+    private $user = null;
 
-	/**
-	 * Get Session instance.
-	 *
-	 * @return Session instance
-	 */
-	public static function getInstance()
-	{
-		if (null === static::$instance)
-		{
-			static::$instance = new static();
-		}
+    /**
+     * Get Session instance.
+     *
+     * @return Session instance
+     */
+    public static function getInstance()
+    {
+        if (null === static::$instance) {
+            static::$instance = new static();
+        }
 
-		return static::$instance;
-	}
+        return static::$instance;
+    }
 
+    public function __construct()
+    {
+        parent::__construct();
 
-	public function __construct()
-	{
-		parent::__construct();
+        session_start();
 
-		session_start();
+        /* session expiration */
+        $timeout = $this->getModuleValue('timeout');
+        if ($timeout > 0) {
+            if (isset($_SESSION['LAST_ACTIVITY']) &&
+                ($_SESSION['LAST_ACTIVITY'] + $timeout) < time()) {
+                /* restart session */
+                $this->destroy();
+                session_start();
+            }
+            $_SESSION['LAST_ACTIVITY'] = time();
+        }
 
-		/* session expiration */
-		$timeout = $this->getModuleValue('timeout');
-		if ($timeout > 0)
-		{
-			if (isset($_SESSION['LAST_ACTIVITY']) &&
-				($_SESSION['LAST_ACTIVITY'] + $timeout) < time())
-			{
-				/* restart session */
-				$this->destroy();
-				session_start();
-			}
-			$_SESSION['LAST_ACTIVITY'] = time();
-		}
+        /* do authentication using basic auth
+         * if basic auth variables are set and
+         * session is not logged in.
+         */
+        $username = $this->get('username');
+        if (!$username && isset($_SERVER['PHP_AUTH_USER'])) {
+            $username = $_SERVER['PHP_AUTH_USER'];
+            $password = $_SERVER['PHP_AUTH_PW'];
+            $this->authenticate($username, $password);
+        }
+    }
 
-		/* do authentication using basic auth
-		 * if basic auth variables are set and
-		 * session is not logged in.
-		 */
-		$username = $this->get('username');
-		if (!$username && isset($_SERVER['PHP_AUTH_USER']))
-		{
-			$username = $_SERVER['PHP_AUTH_USER'];
-			$password = $_SERVER['PHP_AUTH_PW'];
-			$this->authenticate($username, $password);
-		}
-	}
+    public function destroy()
+    {
+        $username = $this->get('username');
+        session_unset();
+        session_destroy();
+        $this->user = null;
+        $this->kernel->log(LOG_DEBUG, 'Logout, username: ' . $username, 'session');
+    }
 
-	public function destroy()
-	{
-		$username = $this->get('username');
-		session_unset();
-		session_destroy();
-		$this->user = null;
-		$this->kernel->log(LOG_DEBUG, 'Logout, username: ' . $username, 'session');
-	}
+    public function authenticate($username, $password)
+    {
+        $user = null;
 
-	public function authenticate($username, $password)
-	{
-		$user = null;
+        /* loop through authenticator options to find requested user */
+        $class = null;
+        foreach ($this->getModuleValue('authenticators') as $class) {
+            try
+            {
+                $user    = new $class($username, $password);
+                $nologin = $this->kernel->getConfigValue('setup', 'no-login');
+                if (is_array($nologin) && $this->authorize($nologin, $user) && !$this->authorize('role:admin', $user)) {
+                    $this->kernel->log(LOG_INFO, 'Login attempt with account that is not allowed to login, authenticator class: ' . $class . ', username: ' . $username, 'session');
+                    $user = null;
+                    continue;
+                }
+                $this->kernel->log(LOG_DEBUG, 'Successfull login, authenticator class: ' . $class . ', username: ' . $username, 'session');
+            } catch (Exception403 $e) {
+                $user = null;
+                continue;
+            }
+            break;
+        }
 
-		/* loop through authenticator options to find requested user */
-		$class = null;
-		foreach ($this->getModuleValue('authenticators') as $class)
-		{
-			try
-			{
-				$user    = new $class($username, $password);
-				$nologin = $this->kernel->getConfigValue('setup', 'no-login');
-				if (is_array($nologin) && $this->authorize($nologin, $user) && !$this->authorize('role:admin', $user))
-				{
-					$this->kernel->log(LOG_INFO, 'Login attempt with account that is not allowed to login, authenticator class: ' . $class . ', username: ' . $username, 'session');
-					$user = null;
-					continue;
-				}
-				$this->kernel->log(LOG_DEBUG, 'Successfull login, authenticator class: ' . $class . ', username: ' . $username, 'session');
-			}
-			catch (Exception403 $e)
-			{
-				$user = null;
-				continue;
-			}
-			break;
-		}
+        /* if authenctication was successfull */
+        if ($user) {
+            $this->set('username', $user->get('username'));
+            $this->user = $user;
+            /* emit auth success */
+            $this->emit(__FUNCTION__, $class, $username, true);
+            return true;
+        }
 
-		/* if authenctication was successfull */
-		if ($user)
-		{
-			$this->set('username', $user->get('username'));
-			$this->user = $user;
-			/* emit auth success */
-			$this->emit(__FUNCTION__, $class, $username, true);
-			return true;
-		}
+        $this->kernel->log(LOG_NOTICE, 'Authentication failure, username: ' . $username, 'session');
+        $this->set('username', false);
+        $this->user = null;
 
-		$this->kernel->log(LOG_NOTICE, 'Authentication failure, username: ' . $username, 'session');
-		$this->set('username', false);
-		$this->user = null;
+        /* emit auth failure */
+        $this->emit(__FUNCTION__, $class, $username, false);
 
-		/* emit auth failure */
-		$this->emit(__FUNCTION__, $class, $username, false);
+        return false;
+    }
 
-		return false;
-	}
+    public function set($name, $value)
+    {
+        $_SESSION[$name] = $value;
+    }
 
-	public function set($name, $value)
-	{
-		$_SESSION[$name] = $value;
-	}
+    public function fakeUser($username)
+    {
+        if ($this->authorize('role:fake')) {
+            $user = null;
+            foreach ($this->getModuleValue('authenticators') as $class) {
+                try {
+                    $user = new $class($username);
+                } catch (Exception403 $e) {
+                    $user = null;
+                    continue;
+                }
+                break;
+            }
+            if ($user) {
+                $this->kernel->log(LOG_NOTICE, 'Fake from user ' . $this->get('username') . ' to user ' . $username . ' successfull.', 'session');
+                $this->set('username', $user->get('username'));
+                $this->user = $user;
+                return true;
+            }
+        }
 
-	public function fakeUser($username)
-	{
-		if ($this->authorize('role:fake'))
-		{
-			$user = null;
-			foreach ($this->getModuleValue('authenticators') as $class)
-			{
-				try {
-					$user = new $class($username);
-				}
-				catch (Exception403 $e)
-				{
-					$user = null;
-					continue;
-				}
-				break;
-			}
-			if ($user)
-			{
-				$this->kernel->log(LOG_NOTICE, 'Fake from user ' . $this->get('username') . ' to user ' . $username . ' successfull.', 'session');
-				$this->set('username', $user->get('username'));
-				$this->user = $user;
-				return true;
-			}
-		}
+        return false;
+    }
 
-		return false;
-	}
+    public function get($name)
+    {
+        if (isset($_SESSION[$name])) {
+            return $_SESSION[$name];
+        }
+        if ($name == 'username') {
+            return false;
+        }
+        return null;
+    }
 
-	public function get($name)
-	{
-		if (isset($_SESSION[$name]))
-		{
-			return $_SESSION[$name];
-		}
-		if ($name == 'username')
-		{
-			return false;
-		}
-		return null;
-	}
+    public function getUser($_username = null)
+    {
+        if ($this->user && $_username === null) {
+            return $this->user;
+        }
 
-	public function getUser($_username = null)
-	{
-		if ($this->user && $_username === null)
-		{
-			return $this->user;
-		}
+        $username = null;
+        if ($_username !== null) {
+            $username = $_username;
+        } else {
+            $username = $this->get('username');
+        }
+        if (!$username) {
+            return null;
+        }
 
-		$username = null;
-		if ($_username !== null)
-		{
-			$username = $_username;
-		}
-		else
-		{
-			$username = $this->get('username');
-		}
-		if (!$username)
-		{
-			return null;
-		}
+        /* loop through authenticator options to find requested user */
+        $user = null;
+        foreach ($this->getModuleValue('authenticators') as $class) {
+            try {
+                $user = new $class($username);
+            } catch (Exception403 $e) {
+                $user = null;
+                continue;
+            }
+            break;
+        }
 
-		/* loop through authenticator options to find requested user */
-		$user = null;
-		foreach ($this->getModuleValue('authenticators') as $class)
-		{
-			try {
-				$user = new $class($username);
-			}
-			catch (Exception403 $e)
-			{
-				$user = null;
-				continue;
-			}
-			break;
-		}
+        if ($user && $_username !== null) {
+            return $user;
+        } else if ($_username !== null) {
+            return null;
+        }
 
-		if ($user && $_username !== null)
-		{
-			return $user;
-		}
-		else if ($_username !== null)
-		{
-			return null;
-		}
+        $this->user = $user;
+        if (!$this->user) {
+            $this->destroy();
+            throw new Exception403('User not found.');
+        }
 
-		$this->user = $user;
-		if (!$this->user)
-		{
-			$this->destroy();
-			throw new Exception403('User not found.');
-		}
+        return $this->user;
+    }
 
-		return $this->user;
-	}
+    public function authorize($access, $user = null)
+    {
+        if (is_string($access)) {
+            return $this->authorizeSingle($access, $user);
+        }
+        if (is_array($access)) {
+            foreach ($access as $single) {
+                $r = $this->authorizeSingle($single, $user);
+                if ($r) {
+                    return true;
+                }
+            }
+        }
+        return false;
 
-	public function authorize($access, $user = null)
-	{
-		if (is_string($access))
-		{
-			return $this->authorizeSingle($access, $user);
-		}
-		if (is_array($access))
-		{
-			foreach ($access as $single)
-			{
-				$r = $this->authorizeSingle($single, $user);
-				if ($r)
-				{
-					return true;
-				}
-			}
-		}
-		return false;
+    }
 
-	}
+    private function authorizeSingle($access, $user = null)
+    {
+        $parts = explode(':', $access);
+        if (count($parts) != 2) {
+            return false;
+        }
+        list($type, $name) = $parts;
 
-	private function authorizeSingle($access, $user = null)
-	{
-		$parts = explode(':', $access);
-		if (count($parts) != 2)
-		{
-			return false;
-		}
-		list($type, $name) = $parts;
+        /* user role none is also acceptable one, and it always returns accepted */
+        if ($type == 'role' && $name == 'none') {
+            return true;
+        }
 
-		/* user role none is also acceptable one, and it always returns accepted */
-		if ($type == 'role' && $name == 'none')
-		{
-			return true;
-		}
+        /* if no authentication has been done */
+        if (!$this->get('username') && $user === null) {
+            return false;
+        }
 
-		/* if no authentication has been done */
-		if (!$this->get('username') && $user === null)
-		{
-			return false;
-		}
+        /* get user */
+        $username = null;
+        if ($user === null) {
+            $user     = $this->getUser();
+            $username = $user->get('username');
+        } else {
+            $username = $this->get('username');
+        }
 
-		/* get user */
-		$username = null;
-		if ($user === null)
-		{
-			$user     = $this->getUser();
-			$username = $user->get('username');
-		}
-		else
-		{
-			$username = $this->get('username');
-		}
+        /* if current user has root role, then everything is permitted always */
+        if ($user->hasRole('role:root')) {
+            return true;
+        }
 
-		/* if current user has root role, then everything is permitted always */
-		if ($user->hasRole('role:root'))
-		{
-			return true;
-		}
+        /* if just authentication as any user is ok */
+        if ($type == 'role' && $name == 'user') {
+            return true;
+        }
 
-		/* if just authentication as any user is ok */
-		if ($type == 'role' && $name == 'user')
-		{
-			return true;
-		}
+        /* if specific user is requested */
+        if ($type == 'user') {
+            if ($name == $username) {
+                return true;
+            }
+            return false;
+        }
 
-		/* if specific user is requested */
-		if ($type == 'user')
-		{
-			if ($name == $username)
-			{
-				return true;
-			}
-			return false;
-		}
+        /* if specific user role is requested */
+        if ($user->hasRole($access)) {
+            return true;
+        }
 
-		/* if specific user role is requested */
-		if ($user->hasRole($access))
-		{
-			return true;
-		}
+        return false;
+    }
 
-		return false;
-	}
+    /**
+     * Get all users as user objects.
+     *
+     * @return array All users as array of objects, username as key.
+     */
+    public function getUsers()
+    {
+        $users = array();
 
-	/**
-	 * Get all users as user objects.
-	 *
-	 * @return array All users as array of objects, username as key.
-	 */
-	public function getUsers()
-	{
-		$users = array();
+        /* loop through authenticator options to find requested user */
+        foreach ($this->getModuleValue('authenticators') as $class) {
+            $user  = new $class();
+            $us    = $user->getUsers();
+            $users = array_merge($us, $users);
+        }
 
-		/* loop through authenticator options to find requested user */
-		foreach ($this->getModuleValue('authenticators') as $class)
-		{
-			$user  = new $class();
-			$us    = $user->getUsers();
-			$users = array_merge($us, $users);
-		}
-
-		return $users;
-	}
+        return $users;
+    }
 }
 
 /*! @} endgroup Core */

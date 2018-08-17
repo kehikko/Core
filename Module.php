@@ -36,21 +36,21 @@ abstract class Module
     //  // $value = $method->invokeArgs($this, $args);
     // }
 
-    public function getModuleValue()
+    public static function getModuleValue()
     {
         $argv = func_get_args();
-        array_unshift($argv, get_class($this));
+        array_unshift($argv, get_called_class());
         $reflection = new ReflectionMethod('kernel', 'getModuleValue');
         /* return value from current module configuration */
-        return $reflection->invokeArgs($this->kernel, $argv);
+        return $reflection->invokeArgs(kernel::getInstance(), $argv);
     }
 
-    public function getConfigValue()
+    public static function getConfigValue()
     {
         $argv       = func_get_args();
         $reflection = new ReflectionMethod('kernel', 'getConfigValue');
         /* return value from configuration */
-        return $reflection->invokeArgs($this->kernel, $argv);
+        return $reflection->invokeArgs(kernel::getInstance(), $argv);
     }
 
     public function setError($error)
