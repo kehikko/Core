@@ -107,6 +107,17 @@ class Exception410 extends Exception
 }
 
 /**
+ * Return http code 418 (I'm a teapot).
+ */
+class Exception418 extends Exception
+{
+    public function __construct($message = "I'm a teapot")
+    {
+        parent::__construct($message, 418);
+    }
+}
+
+/**
  * Return http code 500 (Internal Server Error).
  */
 class Exception500 extends Exception
