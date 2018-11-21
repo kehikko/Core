@@ -96,19 +96,18 @@ abstract class Module
      */
     public function cacheGet($key, $default = null)
     {
-        if (!$this->cache) {
-            $this->cache = $this->kernel->getCacheInstance();
-            if (!$this->cache) {
-                return null;
-            }
+        $cache = \kernel::getCacheInstance();
+        if (!$cache) {
+            return null;
         }
         /* prefix cache key with current class(module) name */
-        $key   = get_class($this) . '::' . $key;
-        $value = $this->cache->get($key);
-        if ($value === null && $default !== null) {
-            return $default;
+        $key  = get_class($this) . '-' . $key;
+        $key  = preg_replace('@[\{}\()/\@:\\\\]@', '-', $key);
+        $item = $cache->getItem($key);
+        if ($item->isHit()) {
+            return $item->get();
         }
-        return $value;
+        return $default;
     }
 
     /**
@@ -118,15 +117,16 @@ abstract class Module
      */
     public function cacheSet($key, $value, $ttl = 600)
     {
-        if (!$this->cache) {
-            $this->cache = $this->kernel->getCacheInstance();
-            if (!$this->cache) {
-                return null;
-            }
+        $cache = \kernel::getCacheInstance();
+        if (!$cache) {
+            return null;
         }
         /* prefix cache key with current class(module) name */
-        $key = get_class($this) . '::' . $key;
-        $this->cache->set($key, $value, $ttl);
+        $key  = get_class($this) . '-' . $key;
+        $key  = preg_replace('@[\{}\()/\@:\\\\]@', '-', $key);
+        $item = $cache->getItem($key);
+        $item->set($value)->expiresAfter($ttl);
+        $cache->save($item);
         return true;
     }
 
